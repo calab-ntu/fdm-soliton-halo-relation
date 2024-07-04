@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import sys
 
@@ -9,16 +11,19 @@ from colossus.utils import constants
 from scipy.integrate import quad
 
 ### constant
-kpc2km               = constants.KPC/1e5 # km
-hbar                 = constants.H/2/np.pi/constants.KPC**2/constants.MSUN  # kpc^2 msun/s
+kpc2km               = constants.KPC*1e-5 # km
+hbar                 = constants.H*0.5/np.pi/constants.KPC**2/constants.MSUN  # kpc^2 msun/s
 eV_c2                = constants.EV/constants.C**2/constants.MSUN # Msun
 newton_G             = constants.G/kpc2km**2 # (kpc^3)/(s^2*Msun)
 
 cosmo = cosmology.setCosmology('planck18')
-H0                   = cosmology.getCurrent().H0/1000 # km/s/kpc
+H0                   = cosmology.getCurrent().H0*1e-3 # km/s/kpc
 h                    = H0*10 # 100km/s/Mpc
 omega_M0             = cosmology.getCurrent().Om0
 background_density_0 = omega_M0*3*(H0/kpc2km)**2/(8*np.pi*newton_G) # Msun/kpc^3
+
+### the velocity ratio between soliton and inner halo by emprotical fitting
+s_h_eq = 0.5**0.5*0.8935555051894757
 
 def set_cosmology(cosmology_name):
     """
@@ -26,7 +31,7 @@ def set_cosmology(cosmology_name):
     """
     global cosmo, H0, h, omega_M0, background_density_0
     cosmo = cosmology.setCosmology(cosmology_name)
-    H0                   = cosmology.getCurrent().H0/1000 # km/s/kpc
+    H0                   = cosmology.getCurrent().H0*1e-3 # km/s/kpc
     h                    = H0*10 # 100km/s/Mpc
     omega_M0             = cosmology.getCurrent().Om0
     background_density_0 = omega_M0*3*(H0/kpc2km)**2/(8*np.pi*newton_G) # Msun/kpc^3
@@ -51,9 +56,7 @@ def FDM_supress_laroche(M, particle_mass):
         ### https://iopscience.iop.org/article/10.3847/0004-637X/818/1/89
         return 3.8e10*(particle_mass/1e-22)**(-4/3)
 
-    a = 5.496
-    b = -1.648
-    c = -0.417
+    a , b, c = 5.496, -1.648, -0.417
     x = M/half_mode_mass(particle_mass)
     F = (1+a*x**b)**c
     return F
@@ -93,14 +96,14 @@ def soliton_dens(x, core_radius, particle_mass):
     Calculates the soliton density profile.
     https://www.nature.com/articles/nphys2996
     Args:
-        x (float): radius in kpc/
+        x (float): radius in kpc
         core_radius (float): core_radius in kpc.
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
         float: Soliton density at the given radius.
     """
-    return ((1.9*(particle_mass/10**-23)**-2*(float(core_radius)**-4))/((1 + 9.1*10**-2*(x/float(core_radius))**2)**8))*10**9
+    return ((1.9*(particle_mass/10**-23)**-2*(core_radius**-4))/((1 + 9.1*10**-2*(x/core_radius)**2)**8))*10**9
 
 def grad_soliton(x, core_radius, particle_mass):
     """
@@ -161,6 +164,18 @@ def Xi(time_z):
     z = (18*np.pi**2 + 82*(omega_M - 1) - 39*(omega_M - 1)**2)/omega_M 
     return z
 
+def redshift_to_a(redshift):
+    """
+    Calculates sacle factor a from redshift.
+
+    Args:
+        redshift (float): Redshift.
+
+    Returns:
+        float: Scale factor a.
+    """
+    return 1/(1+redshift)
+
 def theo_TH_Mc(current_redshift, Mh, particle_mass):
     """
     Calculates the theoretical core mass for a soliton halo in FDM using top-hat collapse.
@@ -174,7 +189,7 @@ def theo_TH_Mc(current_redshift, Mh, particle_mass):
         float: Theoretical core mass for the soliton halo.
     """
     
-    current_time_a = 1/(1+current_redshift)
+    current_time_a = redshift_to_a(current_redshift)
     zeta = Xi(current_redshift)
     
     Rh = (3*Mh/(4*np.pi*zeta*(background_density_0/current_time_a**3)))**(1/3)
@@ -185,15 +200,9 @@ def theo_TH_Mc(current_redshift, Mh, particle_mass):
 
     return mc
 
-def soliton_halo_equilibrium():
-    """
-    return the value of the velocity ratio between soliton and inner halo by emprotical fitting.
-    """
-    return 0.5**0.5*0.8935555051894757
-
 def temp_from_c(current_redshift, Mh, particle_mass):
     """
-    Calculates the temperature from the halo concentration for FDM.
+    Calculates the temperature from the halo concentration for FDM by emprotical fitting.
 
     Args:
         redshift (float): Redshift.
@@ -218,7 +227,7 @@ def revised_theo_c_FDM_Mc(current_redshift, Mh, particle_mass):
     Returns:
         float: Revised theoretical core mass for the soliton halo.
     """
-    current_time_a = 1/(1+current_redshift)
+    current_time_a = redshift_to_a(current_redshift)
     c_theo = concentration_para_FDM(Mh,current_redshift,particle_mass)
     zeta = Xi(current_redshift)
     Rs = (3*Mh/(4*np.pi*zeta*(background_density_0/current_time_a**3)))**(1/3)/c_theo
@@ -231,8 +240,6 @@ def revised_theo_c_FDM_Mc(current_redshift, Mh, particle_mass):
     Ek = -Ep/2
     v = (2*Ek/Mh)**0.5
     mc = v*soliton_m_dev_v(particle_mass)
-
-    s_h_eq = soliton_halo_equilibrium()
     
     return mc*s_h_eq*temp_from_c(current_redshift, Mh, particle_mass)
 
@@ -259,7 +266,7 @@ if __name__ == '__main__':
     particle_mass       = args.particle_mass
     
     ### set cosmology
-    #set_cosmology('planck18') # you can change to other cos,ology
+    # set_cosmology('planck18') # you can change to other cos,ology
     print(cosmology.getCurrent().name)
 
     print(f"halo mass: {halo_mass:.2e}, redshift: {current_redshift:.2e}, particle mass: {particle_mass:.2e}")
