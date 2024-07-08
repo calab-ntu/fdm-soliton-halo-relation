@@ -49,7 +49,7 @@ def FDM_supress_laroche(M, particle_mass):
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: LaRoche suppression factor.
+        F (float): LaRoche suppression factor.
     """
 
     def half_mode_mass(particle_mass):
@@ -59,6 +59,7 @@ def FDM_supress_laroche(M, particle_mass):
     a , b, c = 5.496, -1.648, -0.417
     x = M/half_mode_mass(particle_mass)
     F = (1+a*x**b)**c
+
     return F
 
 def concentration_para_CDM(halo_mass, redshift):
@@ -70,9 +71,11 @@ def concentration_para_CDM(halo_mass, redshift):
         redshift (float): Redshift.
 
     Returns:
-        float: Halo concentration.
+        c_CDM (float): Prediction of halo concentration in CDM model.
     """
+    
     c_CDM = concentration.concentration(halo_mass*h, 'vir', redshift, model = 'ishiyama21',halo_sample ='relaxed')
+    
     return c_CDM
 
 def concentration_para_FDM(halo_mass, redshift, particle_mass):
@@ -85,11 +88,14 @@ def concentration_para_FDM(halo_mass, redshift, particle_mass):
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: Halo concentration for FDM.
+        float: Prediction of halo concentration for FDM.
     """
+    
     c_CDM = concentration_para_CDM(halo_mass, redshift)
     F_supress = FDM_supress_laroche(halo_mass, particle_mass)
-    return c_CDM*F_supress
+    c_FDM = c_CDM*F_supress
+    
+    return c_FDM
 
 def soliton_dens(x, core_radius, particle_mass):
     """
@@ -97,13 +103,16 @@ def soliton_dens(x, core_radius, particle_mass):
     https://www.nature.com/articles/nphys2996
     Args:
         x (float): radius in kpc
-        core_radius (float): core_radius in kpc.
-        particle_mass (float): Particle mass in solar masses.
+        core_radius (float): Core radius in kpc.
+        particle_mass (float): Particle mass in solar mass.
 
     Returns:
-        float: Soliton density at the given radius.
+        density (float): Soliton density at the given radius in Msun/kpc**3.
     """
-    return ((1.9*(particle_mass/10**-23)**-2*(core_radius**-4))/((1 + 9.1*10**-2*(x/core_radius)**2)**8))*10**9
+    
+    density = ((1.9*(particle_mass/10**-23)**-2*(core_radius**-4))/((1 + 9.1*10**-2*(x/core_radius)**2)**8))*10**9
+    
+    return density
 
 def grad_soliton(x, core_radius, particle_mass):
     """
@@ -115,9 +124,12 @@ def grad_soliton(x, core_radius, particle_mass):
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: The gradient of soliton density at the given radius.
+        dens_gradient (float): The gradient of soliton density at the given radius in Msun/kpc^4.
     """
-    return (1.9*(particle_mass/10**-23)**-2*(float(core_radius)**-4)*(-9.1*10**-2*16*x/float(core_radius)**2)/((1 + 9.1*10**-2*(x/float(core_radius))**2)**9))*10**9 # Msun/kpc^4
+    
+    dens_gradient = (1.9*(particle_mass/10**-23)**-2*(float(core_radius)**-4)*(-9.1*10**-2*16*x/float(core_radius)**2)/((1 + 9.1*10**-2*(x/float(core_radius))**2)**9))*10**9
+    
+    return dens_gradient
 
 
 def soliton_m_dev_v(particle_mass): # soliton mass/velocity
@@ -129,9 +141,11 @@ def soliton_m_dev_v(particle_mass): # soliton mass/velocity
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: Soliton's mass / velcoity in Msun/kpc/s
+        m_devided_by_v (float): Soliton's mass / velcoity in Msun/kpc/s
     """
+    
     core_radius = 4 #kpc, can be any
+    
     def shell_mass(r, particle_mass):
         return 4*np.pi*r**2*soliton_dens(r, core_radius, particle_mass)
     
@@ -145,8 +159,9 @@ def soliton_m_dev_v(particle_mass): # soliton mass/velocity
 
     vs = (2*Eks/ms)**0.5
     mc = quad(lambda r: shell_mass(r, particle_mass), 0, core_radius)[0]
+    m_devided_by_v = mc/vs
 
-    return mc/vs #Msun/kpc/s
+    return m_devided_by_v
 
 def Xi(time_z):
     """
@@ -157,11 +172,12 @@ def Xi(time_z):
         redshift (float): Redshift.
 
     Returns:
-        float: Xi parameter.
+        z (float): Xi parameter.
     """
 
     omega_M = (omega_M0*(1 + time_z)**3)/(omega_M0*(1 + time_z)**3 + (1 - omega_M0))
     z = (18*np.pi**2 + 82*(omega_M - 1) - 39*(omega_M - 1)**2)/omega_M 
+    
     return z
 
 def redshift_to_a(redshift):
@@ -172,9 +188,12 @@ def redshift_to_a(redshift):
         redshift (float): Redshift.
 
     Returns:
-        float: Scale factor a.
+        a (float): Scale factor a.
     """
-    return 1/(1+redshift)
+    
+    a = 1/(1+redshift)
+    
+    return a
 
 def theo_TH_Mc(current_redshift, Mh, particle_mass):
     """
@@ -186,7 +205,7 @@ def theo_TH_Mc(current_redshift, Mh, particle_mass):
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: Theoretical core mass for the soliton halo.
+        mc (float): Theoretical core mass for the soliton halo.
     """
     
     current_time_a = redshift_to_a(current_redshift)
@@ -202,7 +221,7 @@ def theo_TH_Mc(current_redshift, Mh, particle_mass):
 
 def temp_from_c(current_redshift, Mh, particle_mass):
     """
-    Calculates the temperature from the halo concentration for FDM by emprotical fitting.
+    Calculates the temperature ratio from the halo concentration for FDM by emprotical fitting.
 
     Args:
         redshift (float): Redshift.
@@ -210,10 +229,13 @@ def temp_from_c(current_redshift, Mh, particle_mass):
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: Temperature.
+        temp_ratio (float): The temperature ratio between the average halo and the center halo.
     """
-    c_theo = concentration_para_FDM(Mh,current_redshift, particle_mass)
-    return 0.27*np.log10(c_theo)+1
+    
+    c_FDM = concentration_para_FDM(Mh,current_redshift, particle_mass)
+    temp_ratio = 0.27*np.log10(c_FDM)+1
+    
+    return temp_ratio
 
 def revised_theo_c_FDM_Mc(current_redshift, Mh, particle_mass):
     """
@@ -225,8 +247,9 @@ def revised_theo_c_FDM_Mc(current_redshift, Mh, particle_mass):
         particle_mass (float): Particle mass in solar masses.
 
     Returns:
-        float: Revised theoretical core mass for the soliton halo.
+        mc (float): Revised theoretical core mass for the soliton halo.
     """
+    
     current_time_a = redshift_to_a(current_redshift)
     c_theo = concentration_para_FDM(Mh,current_redshift,particle_mass)
     zeta = Xi(current_redshift)
@@ -238,10 +261,13 @@ def revised_theo_c_FDM_Mc(current_redshift, Mh, particle_mass):
     Rh = Rs*c_theo
     Ep = newton_G*Mh**2/Rh/2*f_c(c_theo)
     Ek = -Ep/2
-    v = (2*Ek/Mh)**0.5
-    mc = v*soliton_m_dev_v(particle_mass)
+    halo_average_v = (2*Ek/Mh)**0.5
+    inner_halo_v = halo_average_v*temp_from_c(current_redshift, Mh, particle_mass)
+    soliton_v = inner_halo_v*s_h_eq
+
+    mc = soliton_v*soliton_m_dev_v(particle_mass)
     
-    return mc*s_h_eq*temp_from_c(current_redshift, Mh, particle_mass)
+    return mc
 
 
 
