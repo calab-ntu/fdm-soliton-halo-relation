@@ -71,12 +71,11 @@ class CHR_calculator():
         current_time_a = redshift_to_a(current_redshift)
         c_theo         = concentration_para_FDM(Mh, current_redshift, self.h, particle_mass)
         zeta           = get_zeta(current_redshift, self.omega_M0)
-        Rs             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)/c_theo
+        Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
 
         def f_c(c):
             return (2*c*(1+c)*np.log(1+c)-2*c**2-c**3)/((1+c)*np.log(1+c)-c)**2
 
-        Rh             = Rs*c_theo
         Ep             = newton_G*Mh**2/Rh/2*f_c(c_theo)
         Ek             = -Ep/2
         halo_average_v = (2*Ek/Mh)**0.5
@@ -164,7 +163,7 @@ def concentration_para_FDM(halo_mass, redshift, h, particle_mass):
 
 def soliton_dens(x, core_radius, particle_mass):
     """
-    Calculates the soliton density profile.
+    Calculates the soliton density profile in physical frame.
     Schive2014a Supplement eq.4 https://arxiv.org/abs/1406.6586
 
     Args:
@@ -182,7 +181,7 @@ def soliton_dens(x, core_radius, particle_mass):
 
 def grad_soliton(x, core_radius, particle_mass):
     """
-    Calculates the gradient of soliton core density profile.
+    Calculates the gradient of soliton core density profile in physical frame.
 
     Args:
         x (float)             : Radius in kpc.
@@ -200,7 +199,7 @@ def grad_soliton(x, core_radius, particle_mass):
 
 def soliton_m_div_v(particle_mass, enclose_r = 3.3):
     """
-    Calculates the soliton core mass divided by its enclosed average velocity.
+    Calculates the soliton core mass divided by its enclosed average velocity in physical frame.
     This value is proportional to a given particle mass.
 
     Args:
@@ -227,11 +226,11 @@ def soliton_m_div_v(particle_mass, enclose_r = 3.3):
         
         mass = 4*np.pi*r**2*soliton_dens(r, core_radius, particle_mass)
 
-        return 4*np.pi*r**2*soliton_dens(r, core_radius, particle_mass)
+        return mass
     
     def Ek_func(r, particle_mass):
         """
-        Calculates the kinetic energy Ek.
+        Calculates the kinetic energy Ek in physical frame.
 
         Args:
             r (float)             : radius in kpc.
