@@ -1,6 +1,6 @@
-# FDM Core-Halo Relation
+# FDM Soliton-Halo Relation
 
-This repository provides a tool for predicting the core-halo mass relation in fuzzy dark matter (FDM).
+This repository provides a tool for predicting the soliton-halo mass relation in fuzzy dark matter (FDM).
 
 ## Installation
 
