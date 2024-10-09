@@ -46,12 +46,13 @@ class CHR_calculator():
         
         current_time_a = redshift_to_a(current_redshift)
         zeta           = get_zeta(current_redshift, self.omega_M0)
-        
-        Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
-        Ep             = -3/5*newton_G*Mh**2/Rh
-        Ek             = -Ep/2
-        v              = (2*Ek/Mh)**0.5
-        mc             = v*soliton_m_div_v(particle_mass)
+
+        current_time_a = redshift_to_a(current_redshift)
+        zeta           = get_zeta(current_redshift, self.omega_M0)
+        zeta_0         = get_zeta(0, self.omega_M0)
+        Mmin0 = 4.4e7*(particle_mass/1e-22)**(-3/2)
+
+        mc = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
 
         return mc
 
@@ -68,22 +69,30 @@ class CHR_calculator():
             mc (float)            : Revised theoretical core mass for the halo in Msun.
         """
         
+        def f_c(c):
+            """
+            Coefficient of NFW potential according to concentration parameter.
+            Args:
+                c (float)         : Concnetration parameter.
+
+            Returns:
+                Coefficient.
+            """
+            return (2*c*(1+c)*np.log(1+c)-2*c**2-c**3)/((1+c)*np.log(1+c)-c)**2
+
         current_time_a = redshift_to_a(current_redshift)
         c_theo         = concentration_para_FDM(Mh, current_redshift, self.h, particle_mass)
         zeta           = get_zeta(current_redshift, self.omega_M0)
         Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
 
-        def f_c(c):
-            return (2*c*(1+c)*np.log(1+c)-2*c**2-c**3)/((1+c)*np.log(1+c)-c)**2
-
         Ep             = newton_G*Mh**2/Rh/2*f_c(c_theo)
-        Ek             = -Ep/2
-        halo_average_v = (2*Ek/Mh)**0.5
-        inner_halo_v   = halo_average_v*temp_from_c(current_redshift, Mh, self.h, particle_mass)
-        soliton_v      = inner_halo_v*s_h_eq
+        alpha          = 2**(-0.5)
+        beta           = temp_from_c(current_redshift, Mh, self.h, particle_mass)
+        gamma          = 0.8935555051894757
 
-        mc             = soliton_v*soliton_m_div_v(particle_mass)
-        
+        ws             = (-Ep/Mh)**0.5*alpha*beta*gamma  # kpc/s
+        mc             = 3.15e8*ws*kpc2km/100*(particle_mass/1e-22)**-1
+
         return mc
 
 
@@ -160,100 +169,6 @@ def concentration_para_FDM(halo_mass, redshift, h, particle_mass):
     c_FDM     = c_CDM*F_supress
     
     return c_FDM
-
-def soliton_dens(x, core_radius, particle_mass):
-    """
-    Calculates the soliton density profile in physical frame.
-    Schive2014a Supplement eq.4 https://arxiv.org/abs/1406.6586
-
-    Args:
-        x (float)             : radius in kpc
-        core_radius (float)   : Core radius in kpc.
-        particle_mass (float) : Particle mass in eV.
-
-    Returns:
-        density (float)       : Soliton density at the given radius in Msun/kpc**3.
-    """
-    
-    density = ((1.9*(particle_mass/10**-23)**-2*(core_radius**-4))/((1 + 9.1*10**-2*(x/core_radius)**2)**8))*10**9
-    
-    return density
-
-def grad_soliton(x, core_radius, particle_mass):
-    """
-    Calculates the gradient of soliton core density profile in physical frame.
-
-    Args:
-        x (float)             : Radius in kpc.
-        core_radius (float)   : Core radius in kpc.
-        particle_mass (float) : Particle mass in eV.
-
-    Returns:
-        dens_gradient (float) : The gradient of soliton density at the given radius in Msun/kpc^4.
-    """
-    
-    dens_gradient = (1.9*(particle_mass/10**-23)**-2*(core_radius**-4)*(-9.1*10**-2*16*x/core_radius**2)/((1 + 9.1*10**-2*(x/core_radius)**2)**9))*10**9
-    
-    return dens_gradient
-
-
-def soliton_m_div_v(particle_mass, enclose_r = 3.3):
-    """
-    Calculates the soliton core mass divided by its enclosed average velocity in physical frame.
-    This value is proportional to a given particle mass.
-
-    Args:
-        particle_mass (float)  : Particle mass in eV.
-        enclose_r (float)      : The enclosed radius, with a default value of 3.3 times the core radius. This value typically encloses 95% of the energy.
-
-    Returns:
-        m_divided_by_v (float) : Soliton's mass / velcoity in Msun/(kpc/s)
-    """
-    
-    core_radius = 4 # kpc. Any core_radius value can be used to evaluate the constant.
-    
-    def shell_mass(r, particle_mass):
-        """
-        Calculates the shell mass at radius r.
-
-        Args:
-            r (float)             : radius in kpc.
-            particle_mass (float) : Particle mass in eV.
-
-        Returns:
-            mass (float)          : Shell mass of the soliton at radius r in  Msun/kpc.
-        """
-        
-        mass = 4*np.pi*r**2*soliton_dens(r, core_radius, particle_mass)
-
-        return mass
-    
-    def Ek_func(r, particle_mass):
-        """
-        Calculates the kinetic energy Ek in physical frame.
-
-        Args:
-            r (float)             : radius in kpc.
-            particle_mass (float) : Particle mass in eV.
-
-        Returns:
-            Ek (float)            : Kinetic energy in this shell in Msun*kpc/s^2
-        """
-        
-        v = 0.5/soliton_dens(r, core_radius, particle_mass)*(hbar/(particle_mass*eV_c2))*grad_soliton(r, core_radius, particle_mass)
-        Ek = 0.5*shell_mass(r, particle_mass)*v**2
-        
-        return Ek
-    
-    ms             = quad(lambda r: shell_mass(r, particle_mass), 0, core_radius*enclose_r)[0] # Msun
-    Eks            = quad(lambda r: Ek_func(r, particle_mass), 0, core_radius*enclose_r)[0]    # Msun*kpc^2/s^2
-
-    vs             = (2*Eks/ms)**0.5                                                     # kpc/s
-    mc             = quad(lambda r: shell_mass(r, particle_mass), 0, core_radius)[0]     # Msun
-    m_divided_by_v = mc/vs
-
-    return m_divided_by_v
-
 
 def get_zeta(redshift, omega_M0):
     """
