@@ -46,9 +46,6 @@ class SHR_calculator():
         
         current_time_a = redshift_to_a(current_redshift)
         zeta           = get_zeta(current_redshift, self.omega_M0)
-
-        current_time_a = redshift_to_a(current_redshift)
-        zeta           = get_zeta(current_redshift, self.omega_M0)
         zeta_0         = get_zeta(0, self.omega_M0)
         Mmin0 = 4.4e7*m22**(-3/2)
 
