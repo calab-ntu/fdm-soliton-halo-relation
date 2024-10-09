@@ -20,7 +20,7 @@ newton_G             = constants.G/kpc2km**2                                  # 
 s_h_eq = 0.5**0.5*0.8935555051894757
 
 
-class CHR_calculator():
+class SHR_calculator():
     
     def __init__(self,cosmology_model):
         self.cosmo                = cosmology.setCosmology(cosmology_model)
@@ -29,9 +29,9 @@ class CHR_calculator():
         self.omega_M0             = cosmology.getCurrent().Om0
         self.background_density_0 = self.omega_M0*3*(self.H0/kpc2km)**2/(8*np.pi*newton_G) # Msun/kpc^3
     
-    def theo_TH_Mc(self,current_redshift, Mh, particle_mass):
+    def theo_TH_Ms(self,current_redshift, Mh, particle_mass):
         """
-        Calculates the theoretical core mass for a halo in FDM using top-hat collapse.
+        Calculates the theoretical soliton mass for a halo in FDM using top-hat collapse.
         Assume the density and velocity are evenly distributed in halo.
         Schive2014b https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
 
@@ -41,7 +41,7 @@ class CHR_calculator():
             particle_mass (float) : Particle mass in eV.
 
         Returns:
-            mc (float)            : Theoretical core mass for the soliton halo in Msun.
+            ms (float)            : Theoretical soliton mass for the soliton halo in Msun.
         """
         
         current_time_a = redshift_to_a(current_redshift)
@@ -52,13 +52,13 @@ class CHR_calculator():
         zeta_0         = get_zeta(0, self.omega_M0)
         Mmin0 = 4.4e7*(particle_mass/1e-22)**(-3/2)
 
-        mc = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
+        ms = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
 
-        return mc
+        return ms
 
-    def revised_theo_c_FDM_Mc(self,current_redshift, Mh, particle_mass):
+    def revised_theo_c_FDM_Ms(self,current_redshift, Mh, particle_mass):
         """
-        Calculates the revised theoretical core mass for a halo in FDM.
+        Calculates the revised theoretical soliton mass for a halo in FDM.
 
         Args:
             redshift (float)      : Redshift.
@@ -66,7 +66,7 @@ class CHR_calculator():
             particle_mass (float) : Particle mass in eV.
 
         Returns:
-            mc (float)            : Revised theoretical core mass for the halo in Msun.
+            ms (float)            : Revised theoretical soliton mass for the halo in Msun.
         """
         
         def f_c(c):
@@ -91,9 +91,9 @@ class CHR_calculator():
         gamma          = 0.8935555051894757
 
         ws             = (-Ep/Mh)**0.5*alpha*beta*gamma  # kpc/s
-        mc             = 3.15e8*ws*kpc2km/100*(particle_mass/1e-22)**-1
+        ms             = 3.15e8*ws*kpc2km/100*(particle_mass/1e-22)**-1
 
-        return mc
+        return ms
 
 
 def FDM_supress_laroche(M, particle_mass):
@@ -231,7 +231,7 @@ if __name__ == '__main__':
 
     ### load the command-line parameters to input your halo mass, particle mass, and redshift
 
-    parser = argparse.ArgumentParser( description='Predicting the core-halo mass relation in fuzzy dark matter (FDM)' )
+    parser = argparse.ArgumentParser( description='Predicting the soliton-halo mass relation in fuzzy dark matter (FDM)' )
 
     parser.add_argument( '--halo_mass',     action='store', required=False, type=float, dest='halo_mass',
                         help='halo mass (Msun)',      default=1e12 )
@@ -247,16 +247,16 @@ if __name__ == '__main__':
     particle_mass       = args.particle_mass
     
     ### set cosmology
-    # Initialize a CHR_calculator class. You can change to other cosmology
-    chr_calculator = CHR_calculator('planck18')
-    print(chr_calculator.cosmo.name)
+    # Initialize a SHR_calculator class. You can change to other cosmology
+    shr_calculator = SHR_calculator('planck18')
+    print(shr_calculator.cosmo.name)
 
     print(f"halo mass: {halo_mass:.2e}, redshift: {current_redshift:.2e}, particle mass: {particle_mass:.2e}")
 
-    ### Calculate the revised core mass
-    revised_c_FDM_Mc = chr_calculator.revised_theo_c_FDM_Mc(current_redshift, halo_mass, particle_mass)
-    print(f"Predicted core mass (this work)  : {revised_c_FDM_Mc:.2e}")
+    ### Calculate the revised soliton mass
+    revised_c_FDM_Ms = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, particle_mass)
+    print(f"Predicted soliton mass (this work)  : {revised_c_FDM_Ms:.2e}")
 
-    ### Calculate the Schive2014 core mass
-    theo_Mc = chr_calculator.theo_TH_Mc(current_redshift, halo_mass, particle_mass)
-    print(f"Predicted core mass (Schive2014) : {theo_Mc:.2e}")
+    ### Calculate the Schive2014 soliton mass
+    theo_Ms = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, particle_mass)
+    print(f"Predicted soliton mass (Schive2014) : {theo_Ms:.2e}")
