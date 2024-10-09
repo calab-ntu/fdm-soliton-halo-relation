@@ -31,7 +31,7 @@ class CHR_calculator():
     
     def theo_TH_Mc(self,current_redshift, Mh, particle_mass):
         """
-        Calculates the theoretical core mass for a soliton halo in FDM using top-hat collapse.
+        Calculates the theoretical core mass for a halo in FDM using top-hat collapse.
         Assume the density and velocity are evenly distributed in halo.
         Schive2014b https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
 
@@ -41,7 +41,7 @@ class CHR_calculator():
             particle_mass (float) : Particle mass in eV.
 
         Returns:
-            mc (float)            : Theoretical core mass for the soliton halo.
+            mc (float)            : Theoretical core mass for the soliton halo in Msun.
         """
         
         current_time_a = redshift_to_a(current_redshift)
@@ -57,7 +57,7 @@ class CHR_calculator():
 
     def revised_theo_c_FDM_Mc(self,current_redshift, Mh, particle_mass):
         """
-        Calculates the revised theoretical core mass for a soliton halo in FDM.
+        Calculates the revised theoretical core mass for a halo in FDM.
 
         Args:
             redshift (float)      : Redshift.
@@ -65,7 +65,7 @@ class CHR_calculator():
             particle_mass (float) : Particle mass in eV.
 
         Returns:
-            mc (float)            : Revised theoretical core mass for the soliton halo.
+            mc (float)            : Revised theoretical core mass for the halo in Msun.
         """
         
         current_time_a = redshift_to_a(current_redshift)
@@ -102,29 +102,29 @@ def FDM_supress_laroche(M, particle_mass):
         F (float)             : LaRoche suppression factor.
     """
 
-    def half_mode_mass(particle_mass):
-        """
-        Returun half mode mass. (Mass below which small structures are suppressed due to FDM wave-like behavior)
-        Schive2016 eq.6 https://iopscience.iop.org/article/10.3847/0004-637X/818/1/89
-
-        Args:
-            particle_mass (float) : Particle mass in eV.
-
-        Returns:
-            h_m_mass (float)      : Half mode mass in Msun.
-        """
-
-        h_m_mass = 3.8e10*(particle_mass/1e-22)**(-4/3)
-
-        return h_m_mass
-
     a , b, c = 5.496, -1.648, -0.417
     x        = M/half_mode_mass(particle_mass)
     F        = (1+a*x**b)**c
 
     return F
 
-def concentration_para_CDM(halo_mass, redshift):
+def half_mode_mass(particle_mass):
+    """
+    Returun half mode mass. (Mass below which small structures are suppressed due to FDM wave-like behavior)
+    Schive2016 eq.6 https://iopscience.iop.org/article/10.3847/0004-637X/818/1/89
+
+    Args:
+        particle_mass (float) : Particle mass in eV.
+
+    Returns:
+        h_m_mass (float)      : Half mode mass in Msun.
+    """
+
+    h_m_mass = 3.8e10*(particle_mass/1e-22)**(-4/3)
+
+    return h_m_mass
+
+def concentration_para_CDM(halo_mass, h, redshift):
     """
     Calculates the halo concentration using colossus package.
     Diemer 2015 https://iopscience.iop.org/article/10.1088/0004-637X/799/1/108
@@ -138,7 +138,7 @@ def concentration_para_CDM(halo_mass, redshift):
         c_CDM (float)     : Prediction of halo concentration in CDM model.
     """
     
-    c_CDM = concentration.concentration(halo_mass, 'vir', redshift, model = 'ishiyama21',halo_sample ='relaxed')
+    c_CDM = concentration.concentration(halo_mass*h, 'vir', redshift, model = 'ishiyama21',halo_sample ='relaxed')
     
     return c_CDM
 
@@ -155,7 +155,7 @@ def concentration_para_FDM(halo_mass, redshift, h, particle_mass):
         c_FDM (float)         : Prediction of halo concentration for FDM.
     """
     
-    c_CDM     = concentration_para_CDM(halo_mass*h, redshift)
+    c_CDM     = concentration_para_CDM(halo_mass, h, redshift)
     F_supress = FDM_supress_laroche(halo_mass, particle_mass)
     c_FDM     = c_CDM*F_supress
     
@@ -207,7 +207,7 @@ def soliton_m_div_v(particle_mass, enclose_r = 3.3):
         enclose_r (float)      : The enclosed radius, with a default value of 3.3 times the core radius. This value typically encloses 95% of the energy.
 
     Returns:
-        m_divided_by_v (float) : Soliton's mass / velcoity in Msun/kpc/s
+        m_divided_by_v (float) : Soliton's mass / velcoity in Msun/(kpc/s)
     """
     
     core_radius = 4 # kpc. Any core_radius value can be used to evaluate the constant.
@@ -306,7 +306,7 @@ def temp_from_c(current_redshift, Mh, h, particle_mass):
     """
     
     c_FDM      = concentration_para_FDM(Mh, current_redshift, h, particle_mass)
-    temp_ratio = 0.27*np.log10(c_FDM)+1
+    temp_ratio = 0.27*np.log10(c_FDM)+1.05
     
     return temp_ratio
 
