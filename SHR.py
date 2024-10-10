@@ -16,9 +16,6 @@ hbar                 = constants.H*0.5/np.pi/constants.KPC**2/constants.MSUN  # 
 eV_c2                = constants.EV/constants.C**2/constants.MSUN             # Msun
 newton_G             = constants.G/kpc2km**2                                  # (kpc^3)/(s^2*Msun)
 
-### the velocity ratio between soliton and inner halo by empirical fitting
-s_h_eq = 0.5**0.5*0.8935555051894757
-
 
 class SHR_calculator():
     
@@ -36,18 +33,18 @@ class SHR_calculator():
         Schive2014b https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
 
         Args:
-            redshift (float)      : Redshift.
-            halo_mass (float)     : Halo mass in Msun.
-            m22 (float) : Particle mass in 1e-22 eV.
+            redshift (float)  : Redshift.
+            halo_mass (float) : Halo mass in Msun.
+            m22 (float)       : Particle mass in 1e-22 eV.
 
         Returns:
-            ms (float)            : Theoretical soliton mass for the soliton halo in Msun.
+            ms (float)        : Theoretical soliton mass for the soliton halo in Msun.
         """
         
         current_time_a = redshift_to_a(current_redshift)
         zeta           = get_zeta(current_redshift, self.omega_M0)
         zeta_0         = get_zeta(0, self.omega_M0)
-        Mmin0 = 4.4e7*m22**(-3/2)
+        Mmin0          = 4.4e7*m22**(-3/2)
 
         ms = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
 
@@ -56,21 +53,22 @@ class SHR_calculator():
     def revised_theo_c_FDM_Ms(self,current_redshift, Mh, m22):
         """
         Calculates the revised theoretical soliton mass for a halo in FDM.
+        Liao2024 "link"
 
         Args:
-            redshift (float)      : Redshift.
-            halo_mass (float)     : Halo mass in Msun.
-            m22 (float) : Particle mass in 1e-22 eV.
+            redshift (float)  : Redshift.
+            halo_mass (float) : Halo mass in Msun.
+            m22 (float)       : Particle mass in 1e-22 eV.
 
         Returns:
-            ms (float)            : Revised theoretical soliton mass for the halo in Msun.
+            ms (float)        : Revised theoretical soliton mass for the halo in Msun.
         """
         
         def f_c(c):
             """
             Coefficient of NFW potential according to concentration parameter.
             Args:
-                c (float)         : Concnetration parameter.
+                c (float)     : Concnetration parameter.
 
             Returns:
                 Coefficient.
@@ -82,12 +80,12 @@ class SHR_calculator():
         zeta           = get_zeta(current_redshift, self.omega_M0)
         Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
 
-        Ep             = newton_G*Mh**2/Rh/2*f_c(c_theo)
-        alpha          = 2**(-0.5)
-        beta           = temp_from_c(current_redshift, Mh, self.h, m22)
-        gamma          = 0.8935555051894757
+        Ep             = newton_G*Mh**2/Rh/2*f_c(c_theo)                      # Msun*kpc**2/s**2
+        alpha          = 2**(-0.5)                                            # (1+(⟨v_h⟩/⟨w_h⟩)**2)**-0.5
+        beta           = nonisothermality(current_redshift, Mh, self.h, m22)  # w_{h, in}/⟨w_h⟩
+        gamma          = 0.8935555051894757                                   # <w_s>/w_{h, in}
 
-        ws             = (-Ep/Mh)**0.5*alpha*beta*gamma  # kpc/s
+        ws             = (-Ep/Mh)**0.5*alpha*beta*gamma                       # kpc/s
         ms             = 3.15e8*ws*kpc2km/100*m22**-1
 
         return ms
@@ -101,11 +99,11 @@ def FDM_supress_laroche(M, m22):
     Kawai2024 https://journals.aps.org/prd/abstract/10.1103/PhysRevD.110.023519
 
     Args:
-        halo_mass (float)     : Halo mass in Msun.
-        m22 (float) : Particle mass in 1e-22 eV.
+        halo_mass (float) : Halo mass in Msun.
+        m22 (float)       : Particle mass in 1e-22 eV.
 
     Returns:
-        F (float)             : LaRoche suppression factor.
+        F (float)         : LaRoche suppression factor.
     """
 
     a , b, c = 5.496, -1.648, -0.417
@@ -120,10 +118,10 @@ def half_mode_mass(m22):
     Schive2016 eq.6 https://iopscience.iop.org/article/10.3847/0004-637X/818/1/89
 
     Args:
-        m22 (float) : Particle mass in 1e-22 eV.
+        m22 (float)      : Particle mass in 1e-22 eV.
 
     Returns:
-        h_m_mass (float)      : Half mode mass in Msun.
+        h_m_mass (float) : Half mode mass in Msun.
     """
 
     h_m_mass = 3.8e10*m22**(-4/3)
@@ -153,12 +151,12 @@ def concentration_para_FDM(halo_mass, redshift, h, m22):
     Calculates the halo concentration for FDM with Laroche suppression.
 
     Args:
-        halo_mass (float)     : Halo mass in Msun.
-        redshift (float)      : Redshift.
-        m22 (float) : Particle mass in 1e-22 eV.
+        halo_mass (float) : Halo mass in Msun.
+        redshift (float)  : Redshift.
+        m22 (float)       : Particle mass in 1e-22 eV.
 
     Returns:
-        c_FDM (float)         : Prediction of halo concentration for FDM.
+        c_FDM (float)     : Prediction of halo concentration for FDM.
     """
     
     c_CDM     = concentration_para_CDM(halo_mass, h, redshift)
@@ -204,23 +202,23 @@ def redshift_to_a(redshift):
     return a
 
 
-def temp_from_c(current_redshift, Mh, h, m22):
+def nonisothermality(current_redshift, Mh, h, m22):
     """
-    Calculates the temperature ratio (velocity of inner halo / velocity of whole halo average) from the halo concentration for FDM by empirical fitting.
+    Calculates the ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo from the halo concentration for FDM by empirical fitting.
 
     Args:
-        redshift (float)      : Redshift.
-        halo_mass (float)     : Halo mass in Msun.
-        m22 (float) : Particle mass in 1e-22 eV.
+        redshift (float)         : Redshift.
+        halo_mass (float)        : Halo mass in Msun.
+        m22 (float)              : Particle mass in 1e-22 eV.
 
     Returns:
-        temp_ratio (float)    : The temperature ratio between the average halo and the center halo.
+        nonisothermality (float) : The ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo.
     """
     
     c_FDM      = concentration_para_FDM(Mh, current_redshift, h, m22)
-    temp_ratio = 0.27*np.log10(c_FDM)+1.05
+    nonisothermality = 0.27*np.log10(c_FDM)+1.05
     
-    return temp_ratio
+    return nonisothermality
 
 
 if __name__ == '__main__':
@@ -228,14 +226,14 @@ if __name__ == '__main__':
 
     ### load the command-line parameters to input your halo mass, particle mass, and redshift
 
-    parser = argparse.ArgumentParser( description='Predicting the soliton-halo mass relation in fuzzy dark matter (FDM)' )
+    parser = argparse.ArgumentParser(description='Predicting the soliton-halo mass relation in fuzzy dark matter (FDM)')
 
-    parser.add_argument( '-hm',  '--halo_mass',     action='store', required=False, type=float, dest='halo_mass',
-                        help='halo mass (Msun)',      default=1e12 )
-    parser.add_argument( '-z',   '--redshift',      action='store', required=False, type=float, dest='redshift',
-                        help='redshift',              default=0 )
-    parser.add_argument( '-m22', '--m22',           action='store', required=False, type=float, dest='m22',
-                        help='paticle mass (1e-22 eV)', default=2e-1 )
+    parser.add_argument('-hm',  '--halo_mass',     action='store', required=False, type=float, dest='halo_mass',
+                        help='halo mass (Msun)',      default=1e12)
+    parser.add_argument('-z',   '--redshift',      action='store', required=False, type=float, dest='redshift',
+                        help='redshift',              default=0)
+    parser.add_argument('-m22', '--m22',           action='store', required=False, type=float, dest='m22',
+                        help='paticle mass (1e-22 eV)', default=2e-1)
 
     args=parser.parse_args()
 
@@ -248,12 +246,12 @@ if __name__ == '__main__':
     shr_calculator = SHR_calculator('planck18')
     print(shr_calculator.cosmo.name)
 
-    print(f"halo mass: {halo_mass:.2e}, redshift: {current_redshift:.2e}, m22: {m22:.2e}")
+    print(f"halo mass : {halo_mass:.2e}, redshift : {current_redshift:.2e}, m22 : {m22:.2e}")
 
     ### Calculate the revised soliton mass
     revised_c_FDM_Ms = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
-    print(f"Predicted soliton mass (this work)  : {revised_c_FDM_Ms:.2e}")
+    print(f"Predicted soliton mass (Liao2024)   : {revised_c_FDM_Ms:.2e}")
 
     ### Calculate the Schive2014 soliton mass
-    theo_Ms = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
-    print(f"Predicted soliton mass (Schive2014) : {theo_Ms:.2e}")
+    theo_TH_Ms = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
+    print(f"Predicted soliton mass (Schive2014) : {theo_TH_Ms:.2e}")
