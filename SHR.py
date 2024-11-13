@@ -38,7 +38,7 @@ class SHR_calculator():
             m22 (float)       : Particle mass in 1e-22 eV.
 
         Returns:
-            ms (float)        : Theoretical soliton mass for the soliton halo in Msun.
+            ms (float)        : Theoretical soliton mass for the halo in Msun.
         """
         
         current_time_a = redshift_to_a(current_redshift)
@@ -46,21 +46,7 @@ class SHR_calculator():
         zeta_0         = get_zeta(0, self.omega_M0)
         Mmin0          = 4.4e7*m22**(-3/2)            # Msun
 
-        ### Core mass `ms` is calculated using the simplified formula, based on scaling relations.
         ms             = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
-
-        ### Full derivation of the simplified formula (for reference):
-        # ---------------------------------------------------------
-        # # Compute the virialized halo radius Rh (see get_zeta function).
-        # Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3) # kpc
-        # # Calculate the potential energy Ep of the halo, assuming a Top Hat density profile.
-        # Ep             = get_Ep(Mh, Rh, 0, 'Top Hat') # Msun*kpc**2/s**2
-        # # Use Ep to find the halo velocity vh. 1/2 Mh*vh^2 = Ek = -1/2 Ep.
-        # vh             = (-Ep/Mh)**0.5                # kpc/s
-        # # Assuming the soliton and halo share the same velocity.
-        # vs             = vh                           # kpc/s
-        # # Get ms by soliton sclaing symmetry.
-        # ms             = soliton_m_div_v(m22)*vs
 
         return ms
 
@@ -97,10 +83,10 @@ class SHR_calculator():
         # Get soliton thermal velocity ws by considering alpha (energy equipartition), beta (nonisothermality), and gamma (thermal equilibrium)
         ws             = vh*alpha*beta*gamma             # kpc/s
 
-        ### Core mass `ms` is calculated using the simplified formula, based on scaling relations.
+        # Soliton mass `ms` is calculated using the simplified formula, based on scaling relations.
         ms             = 3.15e8*ws*kpc2km/100*m22**-1
 
-        ### You can also use the `soliton_m_div_v` function directly.
+        # You can also use the `soliton_m_div_v` function directly.
         # ms             = soliton_m_div_v(m22)*ws
 
         return ms
@@ -210,6 +196,7 @@ def get_Ep(Mh, Rh, c, type):
         Ep = newton_G*Mh**2/Rh/2*f_c(c)
     elif type == 'Top Hat':
         Ep = newton_G*Mh**2/Rh*-0.6
+    else:
         raise ValueError(f"Unsupported model type '{type}'. Supported types are 'NFW' and 'Top Hat'.")
 
     return Ep
@@ -234,7 +221,7 @@ def soliton_dens(x, core_radius, m22):
 
 def grad_soliton(x, core_radius, m22):
     """
-    Calculates the gradient of soliton core density profile in physical frame.
+    Calculates the gradient of soliton density profile in physical frame.
 
     Args:
         x (float)           : Radius in kpc.
@@ -252,7 +239,7 @@ def grad_soliton(x, core_radius, m22):
 
 def soliton_m_div_v(m22, enclose_r = 3.3):
     """
-    Calculates the soliton core mass divided by its enclosed average velocity in physical frame.
+    Calculates the soliton mass divided by its enclosed average velocity in physical frame.
     This value is proportional to a given particle mass.
 
     Args:
