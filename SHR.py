@@ -18,14 +18,14 @@ newton_G             = constants.G/kpc2km**2                                 # (
 
 
 class SHR_calculator():
-    
+
     def __init__(self,cosmology_model):
         self.cosmo                = cosmology.setCosmology(cosmology_model)
         self.H0                   = cosmology.getCurrent().H0*1e-3                         # km/s/kpc
         self.h                    = self.H0*10                                             # 100km/s/Mpc
         self.omega_M0             = cosmology.getCurrent().Om0
         self.background_density_0 = self.omega_M0*3*(self.H0/kpc2km)**2/(8*np.pi*newton_G) # Msun/kpc^3
-    
+
     def theo_TH_Ms(self,current_redshift, Mh, m22):
         """
         Calculates the theoretical soliton mass for a halo in FDM using top-hat collapse.
@@ -40,7 +40,7 @@ class SHR_calculator():
         Returns:
             ms (float)        : Theoretical soliton mass for the halo in Msun.
         """
-        
+
         current_time_a = redshift_to_a(current_redshift)
         zeta           = get_zeta(current_redshift, self.omega_M0)
         zeta_0         = get_zeta(0, self.omega_M0)
@@ -73,12 +73,12 @@ class SHR_calculator():
 
         # Define key physical constants related to halo dynamics and nonisothermality:
         alpha          = 2**(-0.5)                       # (1+(⟨v_h⟩/⟨w_h⟩)**2)**-0.5
-        beta           = nonisothermality(c_theo)        # w_{h, in}/⟨w_h⟩
+        beta           = self.nonisothermality(c_theo)        # w_{h, in}/⟨w_h⟩
         gamma          = 0.8935555051894757              # <w_s>/w_{h, in}
 
         # Calculate the potential energy Ep of the halo, assuming a NFW density profile.
         Ep             = get_Ep(Mh, Rh, c_theo, 'NFW')   # Msun*kpc**2/s**2
-        # Use Ep to find the halo velocity vh. 1/2 Mh*wh^2 = Ek = -1/2 Ep.
+        # Use Ep to find the halo velocity vh. 1/2 Mh*vh^2 = Ek = -1/2 Ep.
         vh             = (-Ep/Mh)**0.5                   # kpc/s
         # Get soliton thermal velocity ws by considering alpha (energy equipartition), beta (nonisothermality), and gamma (thermal equilibrium)
         ws             = vh*alpha*beta*gamma             # kpc/s
@@ -96,7 +96,7 @@ class SHR_calculator():
         Calculates the halo concentration using colossus package.
         Diemer 2015 https://iopscience.iop.org/article/10.1088/0004-637X/799/1/108
         colossus doc https://bdiemer.bitbucket.io/colossus/halo_concentration.html#concentration-models
-        
+
         Args:
             halo_mass (float) : Halo mass in Msun/h.
             redshift (float)  : Redshift.
@@ -104,9 +104,9 @@ class SHR_calculator():
         Returns:
             c_CDM (float)     : Prediction of halo concentration in CDM model.
         """
-        
+
         c_CDM = concentration.concentration(halo_mass*self.h, 'vir', redshift, model = 'ishiyama21',halo_sample ='relaxed')
-        
+
         return c_CDM
 
     def concentration_para_FDM(self, halo_mass, redshift, m22):
@@ -142,12 +142,28 @@ class SHR_calculator():
             F        = (1+a*x**b)**c
 
             return F
-        
+
         c_CDM     = self.concentration_para_CDM(halo_mass, redshift)
         F_supress = FDM_supress_laroche(halo_mass, m22)
         c_FDM     = c_CDM*F_supress
-        
+
         return c_FDM
+
+    def nonisothermality(self, c_FDM):
+        """
+        Calculates the ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo from the halo concentration for FDM by empirical fitting.
+
+        Args:
+            c_FDM (float)            : The concentration parameter of FDM halo.
+
+        Returns:
+            nonisothermality (float) : The ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo.
+        """
+
+        nonisothermality = 0.27*np.log10(c_FDM)+1.05
+
+        return nonisothermality
+
 
 def half_mode_mass(m22):
     """
@@ -174,7 +190,7 @@ def get_Ep(Mh, Rh, c, type):
         Mh (float)   : Halo mass in Msun.
         Rh (float)   : Halo radius in kpc.
         c (float)    : Halo concentration parameter. (only when type = 'NFW)
-        type (float) : The halo density distribution. Currently support 'NFW' and 'Top Hat'.
+        type (string) : The halo density distribution. Currently support 'NFW' and 'Top Hat'.
 
     Returns:
         Ep (float)   : Potential energy of halo in Msun*kpc^2/s^2.
@@ -182,7 +198,7 @@ def get_Ep(Mh, Rh, c, type):
 
     def f_c(c):
         """
-        Coefficient of NFW potential according to concentration parameter.
+        Coefficient of NFW potential as a function of concentration parameter.
 
         Args:
             c (float) : Concnetration parameter.
@@ -191,7 +207,7 @@ def get_Ep(Mh, Rh, c, type):
             Coefficient.
         """
         return (2*c*(1+c)*np.log(1+c)-2*c**2-c**3)/((1+c)*np.log(1+c)-c)**2
-    
+
     if type == 'NFW':
         Ep = newton_G*Mh**2/Rh/2*f_c(c)
     elif type == 'Top Hat':
@@ -214,9 +230,9 @@ def soliton_dens(x, core_radius, m22):
     Returns:
         density (float)     : Soliton density at the given radius in Msun/kpc**3.
     """
-    
+
     density = ((1.9*(m22/10**-1)**-2*(core_radius**-4))/((1 + 9.1*10**-2*(x/core_radius)**2)**8))*10**9
-    
+
     return density
 
 def grad_soliton(x, core_radius, m22):
@@ -231,9 +247,9 @@ def grad_soliton(x, core_radius, m22):
     Returns:
         dens_gradient (float) : The gradient of soliton density at the given radius in Msun/kpc^4.
     """
-    
+
     dens_gradient = (1.9*(m22/10**-1)**-2*(core_radius**-4)*(-9.1*10**-2*16*x/core_radius**2)/((1 + 9.1*10**-2*(x/core_radius)**2)**9))*10**9
-    
+
     return dens_gradient
 
 
@@ -243,48 +259,48 @@ def soliton_m_div_v(m22, enclose_r = 3.3):
     This value is proportional to a given particle mass.
 
     Args:
-        m22 (float)  : Particle mass in 1e-22 eV.
+        m22 (float)            : Particle mass in 1e-22 eV.
         enclose_r (float)      : The enclosed radius, with a default value of 3.3 times the core radius. This value typically encloses 95% of the energy.
 
     Returns:
         m_divided_by_v (float) : Soliton's mass / velcoity in Msun/kpc/s
     """
-    
+
     core_radius = 4 # kpc. Any core_radius value can be used to evaluate the constant.
-    
+
     def shell_mass(r, m22):
         """
         Calculates the shell mass at radius r.
+
+        Args:
+            r (float)    : radius in kpc.
+            m22 (float)  : Particle mass in 1e-22 eV.
+
+        Returns:
+            mass (float) : Shell mass of the soliton at radius r in  Msun/kpc.
+        """
+
+        mass = 4*np.pi*r**2*soliton_dens(r, core_radius, m22)
+
+        return mass
+
+    def Ek_func(r, m22):
+        """
+        Calculates the kinetic energy Ek in physical frame.
 
         Args:
             r (float)   : radius in kpc.
             m22 (float) : Particle mass in 1e-22 eV.
 
         Returns:
-            mass (float)          : Shell mass of the soliton at radius r in  Msun/kpc.
+            Ek (float)  : Kinetic energy in this shell in Msun*kpc/s^2
         """
-        
-        mass = 4*np.pi*r**2*soliton_dens(r, core_radius, m22)
 
-        return mass
-    
-    def Ek_func(r, m22):
-        """
-        Calculates the kinetic energy Ek in physical frame.
-
-        Args:
-            r (float)             : radius in kpc.
-            m22 (float) : Particle mass in 1e-22 eV.
-
-        Returns:
-            Ek (float)            : Kinetic energy in this shell in Msun*kpc/s^2
-        """
-        
-        v = 0.5/soliton_dens(r, core_radius, m22)*(hbar/(m22*1e-22*eV_c2))*grad_soliton(r, core_radius, m22)
+        v  = 0.5/soliton_dens(r, core_radius, m22)*(hbar/(m22*1e-22*eV_c2))*grad_soliton(r, core_radius, m22)
         Ek = 0.5*shell_mass(r, m22)*v**2
-        
+
         return Ek
-    
+
     ms             = quad(lambda r: shell_mass(r, m22), 0, core_radius*enclose_r)[0] # Msun
     Eks            = quad(lambda r: Ek_func(r, m22), 0, core_radius*enclose_r)[0]    # Msun*kpc^2/s^2
 
@@ -297,7 +313,7 @@ def soliton_m_div_v(m22, enclose_r = 3.3):
 
 def get_zeta(redshift, omega_M0):
     """
-    Calculates the zeta parameter for a spherical cluster model. 
+    Calculates the zeta parameter for a spherical cluster model.
     Bryan1998 eq.6 https://iopscience.iop.org/article/10.1086/305262
     The Omega_R is assumed to be 0.
     Schive2014b https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
@@ -311,8 +327,8 @@ def get_zeta(redshift, omega_M0):
     """
 
     omega_M = (omega_M0*(1 + redshift)**3)/(omega_M0*(1 + redshift)**3 + (1 - omega_M0))
-    zeta    = (18*np.pi**2 + 82*(omega_M - 1) - 39*(omega_M - 1)**2)/omega_M 
-    
+    zeta    = (18*np.pi**2 + 82*(omega_M - 1) - 39*(omega_M - 1)**2)/omega_M
+
     return zeta
 
 
@@ -328,24 +344,8 @@ def redshift_to_a(redshift):
     """
     
     a = 1/(1+redshift)
-    
+
     return a
-
-
-def nonisothermality(c_FDM):
-    """
-    Calculates the ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo from the halo concentration for FDM by empirical fitting.
-
-    Args:
-        c_FDM (float)            : The concentration parameter of FDM halo.
-
-    Returns:
-        nonisothermality (float) : The ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo.
-    """
-    
-    nonisothermality = 0.27*np.log10(c_FDM)+1.05
-    
-    return nonisothermality
 
 
 if __name__ == '__main__':
@@ -367,7 +367,7 @@ if __name__ == '__main__':
     halo_mass           = args.halo_mass
     current_redshift    = args.redshift
     m22                 = args.m22
-    
+
     ### set cosmology
     # Initialize a SHR_calculator class. You can change to other cosmology
     shr_calculator = SHR_calculator('planck18')
