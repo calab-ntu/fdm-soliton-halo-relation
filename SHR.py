@@ -198,7 +198,8 @@ def get_Ep(Mh, Rh, c, type):
 
     def f_c(c):
         """
-        Coefficient of NFW potential as a function of concentration parameter.
+        Coefficient of NFW potential energy as a function of concentration parameter.
+        This ignores contributions outside the halo radius.
 
         Args:
             c (float) : Concnetration parameter.
@@ -207,6 +208,20 @@ def get_Ep(Mh, Rh, c, type):
             Coefficient.
         """
         return (2*c*(1+c)*np.log(1+c)-2*c**2-c**3)/((1+c)*np.log(1+c)-c)**2
+
+    def f_c_with_outside(c):
+        """
+        Coefficient of NFW potential energy as a function of concentration parameter.
+        This include contributions outside the halo radius.
+        Bar 2018 https://journals.aps.org/prd/abstract/10.1103/PhysRevD.98.083027
+
+        Args:
+            c (float) : Concnetration parameter.
+
+        Returns:
+            Coefficient.
+        """
+        return c*(1+c)*(np.log(1+c)-c)/((1+c)*np.log(1+c)-c)**2
 
     if type == 'NFW':
         Ep = newton_G*Mh**2/Rh/2*f_c(c)
