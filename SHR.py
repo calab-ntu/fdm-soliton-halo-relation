@@ -200,6 +200,9 @@ def get_Ep(Mh, Rh, c, type):
         """
         Coefficient of NFW potential energy as a function of concentration parameter.
         This ignores contributions outside the halo radius.
+        \phi_{NFW} = (-4 \pi G \rho_0 R_s^3) / r \times \ln (1+r/R_s) + 4\pi G \rho_0R_s^3/R_{vir} \times({c}/{1+c})
+        dM_{NFW}   = ( 4 \pi r^2 \rho_0) / [ (r/R_s) \times (1+r/R_s)^2 ] dr
+        E_p  = 1/2 \int_0^{R_{vir}} \phi_{NFW} dM_{NFW}
 
         Args:
             c (float) : Concnetration parameter.
@@ -213,6 +216,9 @@ def get_Ep(Mh, Rh, c, type):
         """
         Coefficient of NFW potential energy as a function of concentration parameter.
         This include contributions outside the halo radius.
+        \phi_{NFW} = (-4 \pi G \rho_0 R_s^3) / r \times \ln (1+r/R_s)
+        dM_{NFW}   = ( 4 \pi r^2 \rho_0) / [ (r/R_s) \times (1+r/R_s)^2 ] dr
+        E_p  = 1/2 \int_0^{R_{vir}} \phi_{NFW} dM_{NFW}
         Bar 2018 https://journals.aps.org/prd/abstract/10.1103/PhysRevD.98.083027
 
         Args:
