@@ -1,7 +1,7 @@
 # FDM Soliton-Halo Relation
 
 This repository provides a tool for predicting the soliton-halo mass relation in fuzzy dark matter (FDM).
-[Paper link]()
+[Paper link](https://arxiv.org/abs/2412.09908)
 
 ## Installation
 
