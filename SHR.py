@@ -53,7 +53,7 @@ class SHR_calculator():
     def revised_theo_c_FDM_Ms(self,current_redshift, Mh, m22):
         """
         Calculates the revised theoretical soliton mass for a halo in FDM.
-        Liao2024 "link"
+        Liao2024 https://arxiv.org/abs/2412.09908
 
         Args:
             redshift (float)  : Redshift.
