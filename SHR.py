@@ -30,7 +30,7 @@ class SHR_calculator():
         """
         Calculates the theoretical soliton mass for a halo in FDM using top-hat collapse.
         Assume the density and velocity are evenly distributed in halo.
-        Schive2014b eq 6. & 7. https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
+        Schive2014b eq. 6 & 7 https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
 
         Args:
             redshift (float)  : Redshift.
@@ -40,6 +40,8 @@ class SHR_calculator():
         Returns:
             ms (float)        : Theoretical soliton mass for the halo in Msun.
             rs (float)        : Theoretical soliton radius for the halo in kpc.
+            peak_dens (float) : Peak density of the soliton in Msun/kpc**3.
+            Rh (float)        : Halo radius in kpc.
         """
 
         current_time_a = redshift_to_a(current_redshift)
@@ -49,8 +51,11 @@ class SHR_calculator():
 
         ms             = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
         rs             = 1.6/m22*current_time_a**(0.5)*(zeta/zeta_0)**(-1/6)*(Mh*1e-9)**(-1/3)
+        peak_dens      = soliton_dens(0, rs, m22)
 
-        return ms, rs
+        Rh            = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
+
+        return ms, rs, peak_dens, Rh
 
     def revised_theo_c_FDM_Ms(self,current_redshift, Mh, m22):
         """
@@ -65,7 +70,10 @@ class SHR_calculator():
         Returns:
             ms (float)        : Revised theoretical soliton mass for the halo in Msun.
             rs (float)        : Revised theoretical soliton radius for the halo in kpc.
+            peak_dens (float) : Peak density of the soliton in Msun/kpc**3.
+            Rh (float)        : Halo radius in kpc.
             NFW_Rs (float)    : NFW scale radius in kpc.
+            c_theo (float)    : Theoretical halo concentration for FDM.
         """
 
         current_time_a = redshift_to_a(current_redshift)
@@ -95,8 +103,9 @@ class SHR_calculator():
         # ms             = soliton_m_div_v(m22)*ws
 
         rs             = soliton_m_mul_r(m22)/ms
+        peak_dens      = soliton_dens(0, rs, m22)
 
-        return ms, rs, NFW_Rs
+        return ms, rs, peak_dens, Rh, NFW_Rs, c_theo
 
     def revised_theo_c_FDM_Rs(self,current_redshift, Rh, m22):
         """
@@ -110,15 +119,18 @@ class SHR_calculator():
         Returns:
             ms (float)        : Revised theoretical soliton mass for the halo in Msun.
             rs (float)        : Revised theoretical soliton radius for the halo in kpc.
-            NFW_Rs (float)    : NFW scale radius in kpc.        """
+            Mh (float)        : Halo mass in Msun.
+            NFW_Rs (float)    : NFW scale radius in kpc.
+            c_theo (float)    : Theoretical halo concentration for FDM.
+        """
 
         current_time_a = redshift_to_a(current_redshift)
         zeta           = get_zeta(current_redshift, self.omega_M0)
         Mh = 4*np.pi/3*Rh**3*self.background_density_0/current_time_a*zeta
 
-        ms, rs, NFW_Rs = self.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
+        ms, rs, peak_dens, Rh, NFW_Rs, c_theo = self.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
 
-        return ms, rs, NFW_Rs
+        return ms, rs, peak_dens, Mh, NFW_Rs, c_theo
 
     def concentration_para_CDM(self, halo_mass, redshift):
         """
@@ -197,7 +209,7 @@ class SHR_calculator():
 def half_mode_mass(m22):
     """
     Returun half mode mass. (Mass below which small structures are suppressed due to FDM wave-like behavior)
-    Schive2016 eq.6 https://iopscience.iop.org/article/10.3847/0004-637X/818/1/89
+    Schive2016 eq. 6 https://iopscience.iop.org/article/10.3847/0004-637X/818/1/89
 
     Args:
         m22 (float)      : Particle mass in 1e-22 eV.
@@ -270,7 +282,7 @@ def get_Ep(Mh, Rh, c, type):
 def soliton_dens(x, core_radius, m22):
     """
     Calculates the soliton density profile in physical frame. The core radius marks where density falls to half its peak.
-    Schive2014a Supplement eq.4 https://arxiv.org/abs/1406.6586
+    Schive2014a Supplement eq. 4 https://arxiv.org/abs/1406.6586
 
     Args:
         x (float)           : radius in kpc
@@ -356,6 +368,7 @@ def soliton_m_mul_r(m22, enclose_r = 1):
 
     return m_mul_r
 
+print('%.2e'%(soliton_m_mul_r(2e-1)*0.2**2))
 def soliton_m_div_v(m22, enclose_r = 3.3):
     """
     Calculates the soliton mass divided by its enclosed average velocity in physical frame.
@@ -401,7 +414,7 @@ def soliton_m_div_v(m22, enclose_r = 3.3):
 def get_zeta(redshift, omega_M0):
     """
     Calculates the zeta parameter for a spherical cluster model.
-    Bryan1998 eq.6 https://iopscience.iop.org/article/10.1086/305262
+    Bryan1998 eq. 6 https://iopscience.iop.org/article/10.1086/305262
     The Omega_R is assumed to be 0.
     Schive2014b https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
 
@@ -466,15 +479,18 @@ if __name__ == '__main__':
     print(f"halo mass : {halo_mass:.2e} Msun, redshift : {current_redshift:.2e}, m22 : {m22:.2e}")
 
     ### Calculate the revised soliton mass by given halo mass
-    revised_c_FDM_Ms, revised_c_FDM_Rs, NFW_scale_radius = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
-    print(f"Predicted soliton mass & radius (Liao2024)   : {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc")
-    print(f"Predicted NFW scale radius                   : {NFW_scale_radius:.2e} kpc")
-
+    revised_c_FDM_Ms, revised_c_FDM_Rs, peak_dens, halo_radius, NFW_scale_radius, c_theo = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
+    print("Prediction Liao2024:")
+    print(f"Predicted soliton mass, radius, peak density :\n {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
+    print(f"Predicted halo radius, NFW scale radius, concentration :\n {halo_radius:.2e} kpc, {NFW_scale_radius:.2e} kpc, {c_theo:.2e}")
+    print("")
     ### Calculate the revised soliton mass by given halo radius
-    # revised_c_FDM_Ms, revised_c_FDM_Rs, NFW_scale_radius = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, halo_radius, m22)
-    # print(f"Predicted soliton mass & radius (Liao2024)   : {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc")
-    # print(f"Predicted NFW scale radius                   : {NFW_scale_radius:.2e} kpc")
+    # revised_c_FDM_Ms, revised_c_FDM_Rs, peak_dens, halo_mass, NFW_scale_radius, c_theo = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, halo_radius, m22)
+    # print(f"Predicted soliton mass , radius , peak density : {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
+    # print(f"Predicted halo mass, NFW scale radius, theoretical halo concentration : {halo_mass:.2e} Msun, {NFW_scale_radius:.2e} kpc, {c_theo:.2e}")
 
     ### Calculate the Schive2014 soliton mass
-    theo_TH_Ms, theo_TH_Rs = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
-    print(f"Predicted soliton mass & radius (Schive2014) : {theo_TH_Ms:.2e} Msun, {theo_TH_Rs:.2e} kpc")
+    theo_TH_Ms, theo_TH_Rs, peak_dens, halo_radius = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
+    print("Prediction Schive2014:")
+    print(f"Predicted soliton mass, radius, peak density:\n {theo_TH_Ms:.2e} Msun, {theo_TH_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
+    print(f"Predicted halo radius :\n {halo_radius:.2e} kpc")
