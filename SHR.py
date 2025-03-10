@@ -30,7 +30,7 @@ class SHR_calculator():
         """
         Calculates the theoretical soliton mass for a halo in FDM using top-hat collapse.
         Assume the density and velocity are evenly distributed in halo.
-        Schive2014b https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
+        Schive2014b eq 6. & 7. https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.261302
 
         Args:
             redshift (float)  : Redshift.
@@ -39,6 +39,7 @@ class SHR_calculator():
 
         Returns:
             ms (float)        : Theoretical soliton mass for the halo in Msun.
+            rs (float)        : Theoretical soliton radius for the halo in kpc.
         """
 
         current_time_a = redshift_to_a(current_redshift)
@@ -47,8 +48,9 @@ class SHR_calculator():
         Mmin0          = 4.4e7*m22**(-3/2)            # Msun
 
         ms             = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
+        rs             = 1.6/m22*current_time_a**(0.5)*(zeta/zeta_0)**(-1/6)*(Mh*1e-9)**(-1/3)
 
-        return ms
+        return ms, rs
 
     def revised_theo_c_FDM_Ms(self,current_redshift, Mh, m22):
         """
@@ -62,6 +64,8 @@ class SHR_calculator():
 
         Returns:
             ms (float)        : Revised theoretical soliton mass for the halo in Msun.
+            rs (float)        : Revised theoretical soliton radius for the halo in kpc.
+            NFW_Rs (float)    : NFW scale radius in kpc.
         """
 
         current_time_a = redshift_to_a(current_redshift)
@@ -70,10 +74,11 @@ class SHR_calculator():
 
         # Compute the virialized halo radius Rh (see get_zeta function).
         Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3) # kpc
+        NFW_Rs         = Rh/c_theo
 
         # Define key physical constants related to halo dynamics and nonisothermality:
         alpha          = 2**(-0.5)                       # (1+(⟨v_h⟩/⟨w_h⟩)**2)**-0.5
-        beta           = self.nonisothermality(c_theo)        # w_{h, in}/⟨w_h⟩
+        beta           = self.nonisothermality(c_theo)   # w_{h, in}/⟨w_h⟩
         gamma          = 0.8935555051894757              # <w_s>/w_{h, in}
 
         # Calculate the potential energy Ep of the halo, assuming a NFW density profile.
@@ -89,7 +94,31 @@ class SHR_calculator():
         # You can also use the `soliton_m_div_v` function directly.
         # ms             = soliton_m_div_v(m22)*ws
 
-        return ms
+        rs             = soliton_m_mul_r(m22)/ms
+
+        return ms, rs, NFW_Rs
+
+    def revised_theo_c_FDM_Rs(self,current_redshift, Rh, m22):
+        """
+        Calculates the revised theoretical soliton radius for a halo in FDM.
+        
+        Args:
+            redshift (float)  : Redshift.
+            Rh (float)        : Halo radius in kpc.
+            m22 (float)       : Particle mass in 1e-22 eV.
+        
+        Returns:
+            ms (float)        : Revised theoretical soliton mass for the halo in Msun.
+            rs (float)        : Revised theoretical soliton radius for the halo in kpc.
+            NFW_Rs (float)    : NFW scale radius in kpc.        """
+
+        current_time_a = redshift_to_a(current_redshift)
+        zeta           = get_zeta(current_redshift, self.omega_M0)
+        Mh = 4*np.pi/3*Rh**3*self.background_density_0/current_time_a*zeta
+
+        ms, rs, NFW_Rs = self.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
+
+        return ms, rs, NFW_Rs
 
     def concentration_para_CDM(self, halo_mass, redshift):
         """
@@ -240,7 +269,7 @@ def get_Ep(Mh, Rh, c, type):
 
 def soliton_dens(x, core_radius, m22):
     """
-    Calculates the soliton density profile in physical frame.
+    Calculates the soliton density profile in physical frame. The core radius marks where density falls to half its peak.
     Schive2014a Supplement eq.4 https://arxiv.org/abs/1406.6586
 
     Args:
@@ -273,6 +302,59 @@ def grad_soliton(x, core_radius, m22):
 
     return dens_gradient
 
+def soliton_shell_mass(r, core_radius, m22):
+    """
+    Calculates the shell mass at radius r.
+
+    Args:
+        r (float)           : radius in kpc.
+        core_radius (float) : Core radius in kpc.
+        m22 (float)         : Particle mass in 1e-22 eV.
+
+    Returns:
+        mass (float) : Shell mass of the soliton at radius r in  Msun/kpc.
+    """
+
+    mass = 4*np.pi*r**2*soliton_dens(r, core_radius, m22)
+
+    return mass
+
+def soliton_mass(m22, core_radius, enclose_r = 1):
+    """
+    Calculates the soliton mass enclosed within a given radius. The default radius is the core radius.
+
+    Args:
+        m22 (float)         : Particle mass in 1e-22 eV.
+        core_radius (float) : Core radius in kpc.
+        enclose_r (float)   : The enclosed radius in core radius. Default is 1.
+
+    Returns:
+        mass (float)           : Soliton mass enclosed in Msun.
+    """
+
+    mass = quad(lambda r: soliton_shell_mass(r,core_radius, m22), 0, core_radius*enclose_r)[0]
+
+    return mass
+
+def soliton_m_mul_r(m22, enclose_r = 1):
+    """
+    Calculates the soliton mass multiplied by its enclosed radius in physical frame.
+    This value is inversely proportional to the square of a given particle's mass.
+
+    Args:
+        m22 (float)            : Particle mass in 1e-22 eV.
+        enclose_r (float)      : The enclosed radius, with a default value of the core radius.
+
+    Returns:
+        m_mul_r (float)        : Soliton's mass * radius in Msun*kpc
+    """
+
+    core_radius = 4 # kpc. Any core_radius value can be used to evaluate the constant.
+
+    ms_enclose = soliton_mass(m22, core_radius, enclose_r) # Msun
+    m_mul_r    = ms_enclose*core_radius
+
+    return m_mul_r
 
 def soliton_m_div_v(m22, enclose_r = 3.3):
     """
@@ -289,22 +371,6 @@ def soliton_m_div_v(m22, enclose_r = 3.3):
 
     core_radius = 4 # kpc. Any core_radius value can be used to evaluate the constant.
 
-    def shell_mass(r, m22):
-        """
-        Calculates the shell mass at radius r.
-
-        Args:
-            r (float)    : radius in kpc.
-            m22 (float)  : Particle mass in 1e-22 eV.
-
-        Returns:
-            mass (float) : Shell mass of the soliton at radius r in  Msun/kpc.
-        """
-
-        mass = 4*np.pi*r**2*soliton_dens(r, core_radius, m22)
-
-        return mass
-
     def Ek_func(r, m22):
         """
         Calculates the kinetic energy Ek in physical frame.
@@ -318,16 +384,16 @@ def soliton_m_div_v(m22, enclose_r = 3.3):
         """
 
         v  = 0.5/soliton_dens(r, core_radius, m22)*(hbar/(m22*1e-22*eV_c2))*grad_soliton(r, core_radius, m22)
-        Ek = 0.5*shell_mass(r, m22)*v**2
+        Ek = 0.5*soliton_shell_mass(r, core_radius, m22)*v**2
 
         return Ek
 
-    ms             = quad(lambda r: shell_mass(r, m22), 0, core_radius*enclose_r)[0] # Msun
+    ms_enclose     = soliton_mass(m22, core_radius, enclose_r)                       # Msun
     Eks            = quad(lambda r: Ek_func(r, m22), 0, core_radius*enclose_r)[0]    # Msun*kpc^2/s^2
 
-    vs             = (2*Eks/ms)**0.5                                                 # kpc/s
-    mc             = quad(lambda r: shell_mass(r, m22), 0, core_radius)[0]           # Msun
-    m_divided_by_v = mc/vs
+    vs             = (2*Eks/ms_enclose)**0.5                                         # kpc/s
+    ms             = soliton_mass(m22, core_radius, 1)                               # Msun
+    m_divided_by_v = ms/vs
 
     return m_divided_by_v
 
@@ -378,6 +444,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-hm',  '--halo_mass',     action='store', required=False, type=float, dest='halo_mass',
                         help='halo mass (Msun)',      default=1e12)
+    parser.add_argument('-hr',  '--halo_radius',   action='store', required=False, type=float, dest='halo_radius',
+                        help='halo radius (kpc)',     default=2.635e2)
     parser.add_argument('-z',   '--redshift',      action='store', required=False, type=float, dest='redshift',
                         help='redshift',              default=0)
     parser.add_argument('-m22', '--m22',           action='store', required=False, type=float, dest='m22',
@@ -386,6 +454,7 @@ if __name__ == '__main__':
     args=parser.parse_args()
 
     halo_mass           = args.halo_mass
+    halo_radius         = args.halo_radius
     current_redshift    = args.redshift
     m22                 = args.m22
 
@@ -394,12 +463,18 @@ if __name__ == '__main__':
     shr_calculator = SHR_calculator('planck18')
     print(shr_calculator.cosmo.name)
 
-    print(f"halo mass : {halo_mass:.2e}, redshift : {current_redshift:.2e}, m22 : {m22:.2e}")
+    print(f"halo mass : {halo_mass:.2e} Msun, redshift : {current_redshift:.2e}, m22 : {m22:.2e}")
 
-    ### Calculate the revised soliton mass
-    revised_c_FDM_Ms = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
-    print(f"Predicted soliton mass (Liao2024)   : {revised_c_FDM_Ms:.2e}")
+    ### Calculate the revised soliton mass by given halo mass
+    revised_c_FDM_Ms, revised_c_FDM_Rs, NFW_scale_radius = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
+    print(f"Predicted soliton mass & radius (Liao2024)   : {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc")
+    print(f"Predicted NFW scale radius                   : {NFW_scale_radius:.2e} kpc")
+
+    ### Calculate the revised soliton mass by given halo radius
+    # revised_c_FDM_Ms, revised_c_FDM_Rs, NFW_scale_radius = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, halo_radius, m22)
+    # print(f"Predicted soliton mass & radius (Liao2024)   : {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc")
+    # print(f"Predicted NFW scale radius                   : {NFW_scale_radius:.2e} kpc")
 
     ### Calculate the Schive2014 soliton mass
-    theo_TH_Ms = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
-    print(f"Predicted soliton mass (Schive2014) : {theo_TH_Ms:.2e}")
+    theo_TH_Ms, theo_TH_Rs = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
+    print(f"Predicted soliton mass & radius (Schive2014) : {theo_TH_Ms:.2e} Msun, {theo_TH_Rs:.2e} kpc")
