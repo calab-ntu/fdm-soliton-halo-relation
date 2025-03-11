@@ -368,7 +368,6 @@ def soliton_m_mul_r(m22, enclose_r = 1):
 
     return m_mul_r
 
-print('%.2e'%(soliton_m_mul_r(2e-1)*0.2**2))
 def soliton_m_div_v(m22, enclose_r = 3.3):
     """
     Calculates the soliton mass divided by its enclosed average velocity in physical frame.
@@ -480,7 +479,7 @@ if __name__ == '__main__':
 
     ### Calculate the revised soliton mass by given halo mass
     revised_c_FDM_Ms, revised_c_FDM_Rs, peak_dens, halo_radius, NFW_scale_radius, c_theo = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
-    print("Prediction Liao2024:")
+    print("Prediction Liao2024 :")
     print(f"Predicted soliton mass, radius, peak density :\n {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
     print(f"Predicted halo radius, NFW scale radius, concentration :\n {halo_radius:.2e} kpc, {NFW_scale_radius:.2e} kpc, {c_theo:.2e}")
     print("")
@@ -491,6 +490,6 @@ if __name__ == '__main__':
 
     ### Calculate the Schive2014 soliton mass
     theo_TH_Ms, theo_TH_Rs, peak_dens, halo_radius = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
-    print("Prediction Schive2014:")
-    print(f"Predicted soliton mass, radius, peak density:\n {theo_TH_Ms:.2e} Msun, {theo_TH_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
+    print("Prediction Schive2014 :")
+    print(f"Predicted soliton mass, radius, peak density :\n {theo_TH_Ms:.2e} Msun, {theo_TH_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
     print(f"Predicted halo radius :\n {halo_radius:.2e} kpc")
