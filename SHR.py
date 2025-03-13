@@ -74,9 +74,12 @@ class SHR_calculator():
             Rh (float)        : Halo radius in kpc.
             NFW_Rs (float)    : NFW scale radius in kpc.
             c_theo (float)    : Theoretical halo concentration for FDM.
+            c_CDM (float)     : Prediction of halo concentration in CDM model.
+            beta (float)      : Nonisothermality parameter.
         """
 
         current_time_a = redshift_to_a(current_redshift)
+        c_CDM          = self.concentration_para_CDM(Mh, current_redshift)
         c_theo         = self.concentration_para_FDM(Mh, current_redshift, m22)
         zeta           = get_zeta(current_redshift, self.omega_M0)
 
@@ -105,7 +108,7 @@ class SHR_calculator():
         rs             = soliton_m_mul_r(m22)/ms
         peak_dens      = soliton_dens(0, rs, m22)
 
-        return ms, rs, peak_dens, Rh, NFW_Rs, c_theo
+        return ms, rs, peak_dens, Rh, NFW_Rs, c_theo, c_CDM, beta
 
     def revised_theo_c_FDM_Rs(self,current_redshift, Rh, m22):
         """
@@ -128,9 +131,9 @@ class SHR_calculator():
         zeta           = get_zeta(current_redshift, self.omega_M0)
         Mh = 4*np.pi/3*Rh**3*self.background_density_0/current_time_a*zeta
 
-        ms, rs, peak_dens, Rh, NFW_Rs, c_theo = self.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
+        ms, rs, peak_dens, Rh, NFW_Rs, c_theo, c_CDM, beta = self.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
 
-        return ms, rs, peak_dens, Mh, NFW_Rs, c_theo
+        return ms, rs, peak_dens, Mh, NFW_Rs, c_theo, c_CDM, beta
 
     def concentration_para_CDM(self, halo_mass, redshift):
         """
@@ -473,23 +476,44 @@ if __name__ == '__main__':
     ### set cosmology
     # Initialize a SHR_calculator class. You can change to other cosmology
     shr_calculator = SHR_calculator('planck18')
-    print(shr_calculator.cosmo.name)
+    print(f"\n{'='*50}\nCosmological Calculations using {shr_calculator.cosmo.name}\n{'='*50}")
 
-    print(f"halo mass : {halo_mass:.2e} Msun, redshift : {current_redshift:.2e}, m22 : {m22:.2e}")
+    print("\nInput Parameters:")
+    print(f"{'Halo Mass':<20}: {halo_mass:.2e} Msun")
+    print(f"{'Redshift':<20}: {current_redshift:.2e}")
+    print(f"{'m22':<20}: {m22:.2e}")
 
     ### Calculate the revised soliton mass by given halo mass
-    revised_c_FDM_Ms, revised_c_FDM_Rs, peak_dens, halo_radius, NFW_scale_radius, c_theo = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
-    print("Prediction Liao2024 :")
-    print(f"Predicted soliton mass, radius, peak density :\n {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
-    print(f"Predicted halo radius, NFW scale radius, concentration :\n {halo_radius:.2e} kpc, {NFW_scale_radius:.2e} kpc, {c_theo:.2e}")
-    print("")
+    Ms, Rs, peak_dens, Rh, NFW_scale_radius, c_theo, c_CDM, beta = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
     ### Calculate the revised soliton mass by given halo radius
-    # revised_c_FDM_Ms, revised_c_FDM_Rs, peak_dens, halo_mass, NFW_scale_radius, c_theo = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, halo_radius, m22)
-    # print(f"Predicted soliton mass , radius , peak density : {revised_c_FDM_Ms:.2e} Msun, {revised_c_FDM_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
-    # print(f"Predicted halo mass, NFW scale radius, theoretical halo concentration : {halo_mass:.2e} Msun, {NFW_scale_radius:.2e} kpc, {c_theo:.2e}")
+    # Ms, Rs, peak_dens, Mh, NFW_scale_radius, c_theo, c_CDM, beta = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, halo_radius, m22)
+    print(f"\n{'-'*50}\nLiao2024 Predictions\n{'-'*50}")
+
+    print("\nSoliton Properties:")
+    print(f"{'Mass':<20}: {Ms:.2e} Msun")
+    print(f"{'Radius':<20}: {Rs:.2e} kpc")
+    print(f"{'Peak Density':<20}: {peak_dens:.2e} Msun/kpc^3")
+
+    print("\nHalo Properties:")
+    print(f"{'Mass':<20}: {halo_mass:.2e} Msun")
+    print(f"{'Radius':<20}: {Rh:.2e} kpc")
+    print(f"{'NFW Scale Radius':<20}: {NFW_scale_radius:.2e} kpc")
+    print(f"{'Concentration FDM':<20}: {c_theo:.2e}")
+    print(f"{'Concentration CDM':<20}: {c_CDM:.2e}")
+    print(f"{'nonisothermality':<20}: {beta:.2e}")
+    print(f"\n{'='*50}")
 
     ### Calculate the Schive2014 soliton mass
-    theo_TH_Ms, theo_TH_Rs, peak_dens, halo_radius = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
-    print("Prediction Schive2014 :")
-    print(f"Predicted soliton mass, radius, peak density :\n {theo_TH_Ms:.2e} Msun, {theo_TH_Rs:.2e} kpc, {peak_dens:.2e} Msun/kpc^3")
-    print(f"Predicted halo radius :\n {halo_radius:.2e} kpc")
+    Ms, Rs, peak_dens, halo_radius = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
+    print(f"\n{'-'*50}\nSchive2014 Predictions\n{'-'*50}")
+
+    print("\nSoliton Properties:")
+    print(f"{'Mass':<20}: {Ms:.2e} Msun")
+    print(f"{'Radius':<20}: {Rs:.2e} kpc")
+    print(f"{'Peak Density':<20}: {peak_dens:.2e} Msun/kpc^3")
+
+    print("\nHalo Properties:")
+    print(f"{'Mass':<20}: {halo_mass:.2e} Msun")
+    print(f"{'Radius':<20}: {halo_radius:.2e} kpc")
+    print(f"\n{'='*50}")
+
