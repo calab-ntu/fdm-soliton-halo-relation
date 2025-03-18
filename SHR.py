@@ -204,7 +204,7 @@ class SHR_calculator():
             nonisothermality (float) : The ratio of the inner-halo thermal velocity to the average thermal velocity of the entire halo.
         """
 
-        nonisothermality = 0.27*np.log10(c_FDM)+1.05
+        nonisothermality = 0.281*np.log10(c_FDM)+1.05
 
         return nonisothermality
 
@@ -296,7 +296,7 @@ def soliton_dens(x, core_radius, m22):
         density (float)     : Soliton density at the given radius in Msun/kpc**3.
     """
 
-    density = ((1.9*(m22/10**-1)**-2*(core_radius**-4))/((1 + 9.1*10**-2*(x/core_radius)**2)**8))*10**9
+    density = ((1.945*(m22/10**-1)**-2*(core_radius**-4))/((1 + 9.06*10**-2*(x/core_radius)**2)**8))*10**9
 
     return density
 
@@ -313,7 +313,7 @@ def grad_soliton(x, core_radius, m22):
         dens_gradient (float) : The gradient of soliton density at the given radius in Msun/kpc^4.
     """
 
-    dens_gradient = (1.9*(m22/10**-1)**-2*(core_radius**-4)*(-9.1*10**-2*16*x/core_radius**2)/((1 + 9.1*10**-2*(x/core_radius)**2)**9))*10**9
+    dens_gradient = (1.945*(m22/10**-1)**-2*(core_radius**-4)*(-9.06*10**-2*16*x/core_radius**2)/((1 + 9.06*10**-2*(x/core_radius)**2)**9))*10**9
 
     return dens_gradient
 
@@ -456,37 +456,51 @@ if __name__ == '__main__':
     ### load the command-line parameters to input your halo mass, particle mass, and redshift
 
     parser = argparse.ArgumentParser(description='Predicting the soliton-halo mass relation in fuzzy dark matter (FDM)')
+    
+    # Create a mutually exclusive group for halo_mass and halo_radius
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-hm', '--halo_mass',       action='store', type=float, dest='halo_mass',
+                        help='halo mass (Msun)', default=None)
+    group.add_argument('-hr', '--halo_radius',     action='store', type=float, dest='halo_radius',
+                        help='halo radius (kpc)', default=None)
 
-    parser.add_argument('-hm',  '--halo_mass',     action='store', required=False, type=float, dest='halo_mass',
-                        help='halo mass (Msun)',      default=1e12)
-    parser.add_argument('-hr',  '--halo_radius',   action='store', required=False, type=float, dest='halo_radius',
-                        help='halo radius (kpc)',     default=2.635e2)
-    parser.add_argument('-z',   '--redshift',      action='store', required=False, type=float, dest='redshift',
+    parser.add_argument('-z',   '--redshift',      action='store', type=float, dest='redshift',
                         help='redshift',              default=0)
-    parser.add_argument('-m22', '--m22',           action='store', required=False, type=float, dest='m22',
+    parser.add_argument('-m22', '--m22',           action='store', type=float, dest='m22',
                         help='paticle mass (1e-22 eV)', default=2e-1)
 
     args=parser.parse_args()
 
-    halo_mass           = args.halo_mass
-    halo_radius         = args.halo_radius
-    current_redshift    = args.redshift
-    m22                 = args.m22
+    # Check if at least one of halo_mass or halo_radius is provided
+    if args.halo_mass is None and args.halo_radius is None:
+        print("No halo mass or halo radius is provided. Use default halo mass 1e12 Msun.")
+        args.halo_mass = 1e12
+
+
+    Mh               = args.halo_mass
+    Rh               = args.halo_radius
+    current_redshift = args.redshift
+    m22              = args.m22
 
     ### set cosmology
     # Initialize a SHR_calculator class. You can change to other cosmology
     shr_calculator = SHR_calculator('planck18')
-    print(f"\n{'='*50}\nCosmological Calculations using {shr_calculator.cosmo.name}\n{'='*50}")
+    print(f"\n{'='*50}\nCosmological Model: {shr_calculator.cosmo.name}\n{'='*50}")
 
     print("\nInput Parameters:")
-    print(f"{'Halo Mass':<20}: {halo_mass:.2e} Msun")
-    print(f"{'Redshift':<20}: {current_redshift:.2e}")
-    print(f"{'m22':<20}: {m22:.2e}")
+
 
     ### Calculate the revised soliton mass by given halo mass
-    Ms, Rs, peak_dens, Rh, NFW_scale_radius, c_theo, c_CDM, beta = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, halo_mass, m22)
+    if args.halo_mass is not None:
+        print(f"{'Halo Mass':<20}: {Mh:.2e} Msun")
+        Ms, Rs, peak_dens, Rh, NFW_scale_radius, c_theo, c_CDM, beta = shr_calculator.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
     ### Calculate the revised soliton mass by given halo radius
-    # Ms, Rs, peak_dens, Mh, NFW_scale_radius, c_theo, c_CDM, beta = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, halo_radius, m22)
+    else:
+        print(f"{'Halo Radius':<20}: {Rh:.2e} kpc")
+        Ms, Rs, peak_dens, Mh, NFW_scale_radius, c_theo, c_CDM, beta = shr_calculator.revised_theo_c_FDM_Rs(current_redshift, Rh, m22)
+
+    print(f"{'Redshift':<20}: {current_redshift:.2e}")
+    print(f"{'m22':<20}: {m22:.2e}")
     print(f"\n{'-'*50}\nLiao2024 Predictions\n{'-'*50}")
 
     print("\nSoliton Properties:")
@@ -495,7 +509,7 @@ if __name__ == '__main__':
     print(f"{'Peak Density':<20}: {peak_dens:.2e} Msun/kpc^3")
 
     print("\nHalo Properties:")
-    print(f"{'Mass':<20}: {halo_mass:.2e} Msun")
+    print(f"{'Mass':<20}: {Mh:.2e} Msun")
     print(f"{'Radius':<20}: {Rh:.2e} kpc")
     print(f"{'NFW Scale Radius':<20}: {NFW_scale_radius:.2e} kpc")
     print(f"{'Concentration FDM':<20}: {c_theo:.2e}")
@@ -504,7 +518,7 @@ if __name__ == '__main__':
     print(f"\n{'='*50}")
 
     ### Calculate the Schive2014 soliton mass
-    Ms, Rs, peak_dens, halo_radius = shr_calculator.theo_TH_Ms(current_redshift, halo_mass, m22)
+    Ms, Rs, peak_dens, Rh = shr_calculator.theo_TH_Ms(current_redshift, Mh, m22)
     print(f"\n{'-'*50}\nSchive2014 Predictions\n{'-'*50}")
 
     print("\nSoliton Properties:")
@@ -513,7 +527,7 @@ if __name__ == '__main__':
     print(f"{'Peak Density':<20}: {peak_dens:.2e} Msun/kpc^3")
 
     print("\nHalo Properties:")
-    print(f"{'Mass':<20}: {halo_mass:.2e} Msun")
-    print(f"{'Radius':<20}: {halo_radius:.2e} kpc")
+    print(f"{'Mass':<20}: {Mh:.2e} Msun")
+    print(f"{'Radius':<20}: {Rh:.2e} kpc")
     print(f"\n{'='*50}")
 
