@@ -48,12 +48,22 @@ class SHR_calculator():
         zeta           = get_zeta(current_redshift, self.omega_M0)
         zeta_0         = get_zeta(0, self.omega_M0)
         Mmin0          = 4.4e7*m22**(-3/2)            # Msun
+        Rh             = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
 
-        ms             = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
-        rs             = 1.6/m22*current_time_a**(0.5)*(zeta/zeta_0)**(-1/6)*(Mh*1e-9)**(-1/3)
+
+        # Get the soliton mass `ms` and radius `rs` using paper Schive2014b eq. 6 & 7
+        # ms             = 0.25*current_time_a**(-0.5)*(zeta/zeta_0)**(1/6)*(Mh/Mmin0)**(1/3)*Mmin0
+        # rs             = 1.6/m22*current_time_a**(0.5)*(zeta/zeta_0)**(-1/6)*(Mh*1e-9)**(-1/3)
+
+        # Use the `soliton_m_div_v` function directly.
+        # This value is slightly different from the above formula due to decimal precision
+        Ep             = get_Ep(Mh, Rh, None, 'Top Hat')   # Msun*kpc**2/s**2
+        vh             = (-Ep/Mh)**0.5              # kpc/s
+        ws             = vh                         # kpc/s
+        ms             = soliton_m_div_v(m22)*ws
+
+        rs             = soliton_m_mul_r(m22)/ms
         peak_dens      = soliton_dens(0, rs, m22)
-
-        Rh            = (3*Mh/(4*np.pi*zeta*(self.background_density_0/current_time_a**3)))**(1/3)
 
         return ms, rs, peak_dens, Rh
 
@@ -100,7 +110,7 @@ class SHR_calculator():
         ws             = vh*alpha*beta*gamma             # kpc/s
 
         # Soliton mass `ms` is calculated using the simplified formula, based on scaling relations.
-        ms             = 3.15e8*ws*kpc2km/100*m22**-1
+        ms             = 3.23e8*ws*kpc2km/100*m22**-1
 
         # You can also use the `soliton_m_div_v` function directly.
         # ms             = soliton_m_div_v(m22)*ws
@@ -129,7 +139,7 @@ class SHR_calculator():
 
         current_time_a = redshift_to_a(current_redshift)
         zeta           = get_zeta(current_redshift, self.omega_M0)
-        Mh = 4*np.pi/3*Rh**3*self.background_density_0/current_time_a*zeta
+        Mh = 4*np.pi/3*Rh**3*self.background_density_0/current_time_a**3*zeta
 
         ms, rs, peak_dens, Rh, NFW_Rs, c_theo, c_CDM, beta = self.revised_theo_c_FDM_Ms(current_redshift, Mh, m22)
 
