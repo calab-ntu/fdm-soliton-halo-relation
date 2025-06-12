@@ -123,12 +123,12 @@ class SHR_calculator():
     def revised_theo_c_FDM_Rs(self,current_redshift, Rh, m22):
         """
         Calculates the revised theoretical soliton radius for a halo in FDM.
-        
+
         Args:
             redshift (float)  : Redshift.
             Rh (float)        : Halo radius in kpc.
             m22 (float)       : Particle mass in 1e-22 eV.
-        
+
         Returns:
             ms (float)        : Revised theoretical soliton mass for the halo in Msun.
             rs (float)        : Revised theoretical soliton radius for the halo in kpc.
@@ -454,7 +454,7 @@ def redshift_to_a(redshift):
     Returns:
         a (float)        : Scale factor a.
     """
-    
+
     a = 1/(1+redshift)
 
     return a
@@ -466,7 +466,7 @@ if __name__ == '__main__':
     ### load the command-line parameters to input your halo mass, particle mass, and redshift
 
     parser = argparse.ArgumentParser(description='Predicting the soliton-halo mass relation in fuzzy dark matter (FDM)')
-    
+
     # Create a mutually exclusive group for halo_mass and halo_radius
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-hm', '--halo_mass',       action='store', type=float, dest='halo_mass',
